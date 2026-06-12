@@ -1,19 +1,20 @@
+import math
+
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-import math
 
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
         super().__init__()
         self.dim = dim
-    def forward(self, t):
         halfdim = (self.dim + 1) // 2
         expo = math.log(10000) / (halfdim - 1)
-        li = torch.exp(torch.arange(0, halfdim, 1) * -expo)
-        li = t.unsqueeze(1) * li.unsqueeze(0)
+        emb = torch.exp(torch.arange(0, halfdim) * -expo)
+        self.register_buffer('emb', emb)
+
+    def forward(self, t):
+        t = t.float()
+        li = t.unsqueeze(1) * self.emb.unsqueeze(0)
         return torch.cat([li.sin(), li.cos()], dim=1)[:, :self.dim]
 
 
@@ -95,9 +96,3 @@ class UNet(nn.Module):
             x = self.ups[i](x, skipList[i], time_emb)
         x = self.outro(x)
         return x
-
-model = UNet(in_channels=1, out_channels=2, base_channels=64)
-x = torch.randn(4, 1, 256, 256)
-t = torch.randint(0, 1000, (4,))
-y = model(x, t)
-print(y.shape)  # 应为 [4,1,64,64]
