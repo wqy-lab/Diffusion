@@ -1,0 +1,22 @@
+import torch
+import torch.nn
+
+class Diffusion(object):
+    def __init__(self, T=1000, beta_start=1e-4, beta_end=0.02, device='cpu'):
+        self.T = T
+        self.beta = torch.linspace(beta_start, beta_end, T, device=device)
+        self.alpha = 1.0 - self.beta
+        self.alpha_bar = torch.cumprod(self.alpha, dim=0)
+    
+    def q_sample(self, x0, t, noise):
+        co1 = torch.sqrt(self.alpha_bar[t]).reshape(-1, 1, 1, 1)
+        co2 = torch.sqrt(1 - self.alpha_bar[t]).reshape(-1, 1, 1, 1)
+        return co1 * x0 + co2 * noise, noise
+
+    @torch.no_grad()
+    def p_sample(self, xt, t, noise):
+        alpha_t = self.alpha[t].reshape(-1, 1, 1, 1)
+        alpha_tbar = self.alpha_bar[t].reshape(-1, -1, 1, 1)
+        return 1.0 / torch.sqrt(alpha_t) * (xt - (1 - alpha_t) / torch.sqrt(1 - alpha_tbar) * noise)
+    
+
